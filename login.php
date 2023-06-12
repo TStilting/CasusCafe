@@ -13,24 +13,25 @@ $zin = inloggen();
 function inloggen() {
     session_start();
     if (isset($_POST['Submit'])) {
-        $email = isset($_POST['email']) ? $_POST['email'] : "";
+        $usernameLogin = isset($_POST['username']) ? $_POST['username'] : "";
         if (isset($_POST['wachtwoord'])){
             $wachtwoord =$_POST['wachtwoord'] ;
         }
 
         global $conn;
-        if ($email != "" && $wachtwoord != ""){
-            $query = "select count(*) from logins where email='".$email."' and wachtwoord='".$wachtwoord."'";
+        if ($usernameLogin != "" && $wachtwoord != ""){
+            $query = "select * from login where username='".$usernameLogin."' and wachtwoord='".$wachtwoord."'";
             $stmt = $conn->prepare($query);
             $stmt->execute();
             $resultaat = $stmt->fetch();
-                if ($resultaat[0] == 1) {
-                    return "<p>Toegang Verleend</p>";
-                    return "";
-                } else {
-                    return "<p>Geen Toegang</p>";
-                    return "";
-                }
+            if($resultaat['rol'] == 'admin'){
+                $_SESSION['username'] = $resultaat['username'];
+                $_SESSION['rol'] = $resultaat['rol'];
+                header("location: admin.php");
+                exit;
+            } else {
+                return "<p>Geen Toegang</p>";
+            }
         } else {
             return "<p>Vul alles in</p>";
         }
@@ -42,6 +43,8 @@ function inloggen() {
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="stylesheet" href="style.css">
+    <script src="java.js"></script>
     <meta charset="UTF-8">
     <title>Login</title>
 </head>
@@ -57,8 +60,8 @@ function inloggen() {
             <td colspan="2" align="left" valign="top"><h3>Login</h3></td>
         </tr>
         <tr>
-            <td align="right" valign="top">Email</td>
-            <td><input name="email" type="text" class="Input"></td>
+            <td align="right" valign="top">Username</td>
+            <td><input name="username" type="text" class="Input"></td>
         </tr>
         <tr>
             <td align="right">Wachtwoord</td>
