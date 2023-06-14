@@ -16,13 +16,13 @@ if ($_SESSION['rol'] != 'admin') {
   exit;
 }
 
-// Fetch band names from the database
-$bandNames = array();
+// Haal de info van de bands uit de database
+$bandDisplays = array();
 foreach ($pdo->query("SELECT * FROM Band") as $row) {
-  $bandNames[] = $row['bandNaam'];
+  $bandDisplays[] = $row;
 }
 
-// Process the event submission
+// Doet alle acties na een submit
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $band = $_POST['band_name'];
   $genre = $_POST['genre'];
@@ -30,9 +30,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $herkomst = $_POST['herkomst'];
   $omschrijving = $_POST['omschrijving'];
 
-  // Store the event in the database
+  // Insert Query
   $stmt = $pdo->prepare("INSERT INTO band (bandNaam, genre, prijs, herkomst, omschrijving) VALUES (?, ?, ?, ?, ?)");
   $stmt->execute([$band, $genre, $prijs, $herkomst, $omschrijving]);
+
+  echo 'Band Toegevoegd';
 
 }
 
@@ -73,9 +75,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <input type="submit" value="Add Band">
   </form>
   <div>
-  <?php foreach ($bandNames as $bandName) :
-    echo $bandName;
-  endforeach; ?>
+    <h2>Bands</h2>
+    <?php foreach ($bandDisplays as $bandDisplay) : ?>
+      <div>
+        <p>Band Name: <?php echo $bandDisplay['bandNaam']; ?></p>
+        <p>Genre: <?php echo $bandDisplay['genre']; ?></p>
+        <p>Prijs: <?php echo $bandDisplay['prijs']; ?></p>
+        <p>Herkomst: <?php echo $bandDisplay['herkomst']; ?></p>
+        <p>Omschrijving: <?php echo $bandDisplay['omschrijving']; ?></p>
+      </div>
+      <hr>
+    <?php endforeach; ?>
   </div>
 </body>
 </html>

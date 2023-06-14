@@ -2,7 +2,7 @@
 
 session_start();
 
-// Check for login
+// Check voor login
 if (!isset($_SESSION['username']) || empty($_SESSION['username'])) {
   header("location: login.php");
   exit;
@@ -10,48 +10,19 @@ if (!isset($_SESSION['username']) || empty($_SESSION['username'])) {
 
 include("connection.php");
 
-// Redirect if the role is not admin
+// stuur de user naar index als het geen admin is
 if ($_SESSION['rol'] != 'admin') {
   header("location: index.php");
   exit;
 }
 
-// Get the current date
-$currentYear = date('Y');
-$currentMonth = date('m');
-$currentDay = date('d');
-
-// Create an array for all the months
-$months = array();
-$months[] = $currentMonth; // Include the current month with today's date as the starting point
-
-for ($b = 1; $b < 12; $b++) {
-  if ($currentMonth >= 12) {
-    $currentMonth = 1;
-    $currentYear++;
-  } else {
-    $currentMonth++;
-  }
-  $months[] = $currentMonth;
-}
-
-$daycheck = cal_days_in_month(CAL_GREGORIAN, $currentMonth, $currentYear);
-$currentDate = (int) date('d');
-$startDate = ($currentMonth == $currentMonth && $currentDate < $daycheck) ? $currentDate : 1;
-$endDate = ($currentMonth == $currentMonth && $currentDate < $daycheck) ? $daycheck - 1 : $currentDate - 1;
-
-$disabledDays = array();
-if ($currentDate > 1) {
-  $disabledDays = range(1, $currentDate - 1); // Create an array of days that have already passed
-}
-
-// Fetch band names from the database
+// Haal alle bandnamen op
 $bandNames = array();
 foreach ($pdo->query("SELECT * FROM Band") as $row) {
   $bandNames[] = $row['bandNaam'];
 }
 
-// Process the event submission
+// Doet alle acties na een submit
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $eventDate = $_POST['event_date'];
   $bandName = $_POST['band_name'];
@@ -60,34 +31,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $eventDuration = $_POST['event_duration'];
   $entree = $_POST['entree'];
 
-  // get bandId
-  $bandId = $stmt = $pdo->prepare("SELECT bandId FROM Band WHERE bandNaam=(?)"); $stmt->execute([$bandName]);
+  // Haal het juiste bandId op
+  $stmt = $pdo->prepare("SELECT bandId FROM Band WHERE bandNaam = ?");
+  $stmt->execute([$bandName]);
+  $band = $stmt->fetch(PDO::FETCH_ASSOC);
+  $bandId = $band['bandId'];
+  
 
-  // Store the event in the database
-  $stmt = $pdo->prepare("INSERT INTO event (datum, entreePrijs, begistijd) VALUES (?, ?, ?)");
+  // Insert Query
+  $stmt = $pdo->prepare("INSERT INTO `Event` (datum, entreePrijs, beginstijd) VALUES (?, ?, ?)");
   $stmt->execute([$eventDate, $entree ,$eventTime]);
 
   $lastInsertedId = $pdo->lastInsertId();
 
-  $stmt = $pdo->prepare("INSERT INTO act (hoofdAct, Event_eventId, Band_bandId) VALUES (?, ?, ?)");
+  $stmt = $pdo->prepare("INSERT INTO Act (hoofdAct, Event_eventId, Bands_bandId) VALUES (?, ?, ?)");
   $stmt->execute([$hoofdAct, $lastInsertedId, $bandId]);
 
   $lastInsertedActId = $pdo->lastInsertId();
 
-  $stmt = $pdo->prepare("INSERT INTO set (duurInMinuten, Act_actId) VALUES (?, ?)");
+  $stmt = $pdo->prepare("INSERT INTO `Set` (duurInMinuten, Act_actId) VALUES (?, ?)");
   $stmt->execute([$eventDuration, $lastInsertedActId]);
 
+  echo 'Event Toegevoegd';
+
 }
 
-// Retrieve events for the selected month
-$selectedMonth = $currentMonth;
-if (isset($_GET['month'])) {
-  $selectedMonth = $_GET['month'];
-}
-
-$events = array();
-$stmt = $pdo->prepare("SELECT * FROM event WHERE month = ?");
-$stmt->execute([$selectedMonth]);
+$stmt = $pdo->prepare("SELECT datum, Band.bandNaam, Act.hoofdAct, entreePrijs, beginstijd, `Set`.duurInMinuten
+FROM `Event`
+JOIN Act ON `Event`.eventId = Act.Event_eventId
+JOIN Band ON Act.Bands_bandId = Band.bandId
+JOIN `Set` ON Act.ActId = `Set`.Act_actId
+ORDER BY datum, beginstijd");
+$stmt->execute();
 $events = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 ?>
@@ -101,12 +76,12 @@ $events = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <a href="index.php">Terug naar de Startpagina</a>
 </header>
 
-<body onload="checkMonth()">
+<body>
   <h2>Add Event</h2>
   <form method="POST" action="">
 
     <label for="event_month">Datum:</label>
-    <input type="date" id="event_date" name="event_date" onchange="checkMonth()" required>
+    <input type="date" id="event_date" name="event_date" required>
     <br>
 
     <label for="band_name">Band Naam:</label>
@@ -136,41 +111,36 @@ $events = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <input type="submit" value="Add Event">
   </form>
   <div>
+  <h2>Events</h2>
   <?php
-    $stmt = $pdo->prepare("SELECT datum, Band.bandNaam, Act.hoofdAct, entreePrijs, beginstijd, Set.duurInMinuten
-    FROM Event
-    JOIN Act ON Event.eventId = Act.Event_eventId
-    JOIN Band ON Act.Band_bandId = Band.bandId
-    JOIN Set ON Act.ActId = Set.Act_actId");
-    $stmt->execute();
-  ?>
-  </div>
+  $currentDate = null;
+  $currentTime = null;
+  foreach ($events as $event) :
+    $eventDate = $event['datum'];
+    $eventTime = $event['beginstijd'];
 
-  <script type="text/javascript">
-    function checkMonth() {
-      var month = document.getElementById("event_month").value;
-      var daysInMonth = new Date(<?php echo $currentYear; ?>, month - 1, 0).getDate();
-
-      var eventDaySelect = document.getElementById("event_day");
-      var selectedDay = eventDaySelect.value; // Store the selected day value
-
-      eventDaySelect.innerHTML = ""; // Clear the options
-
-      for (var day = 1; day <= daysInMonth; day++) {
-        var option = document.createElement("option");
-        option.value = day;
-        option.text = day;
-        eventDaySelect.appendChild(option);
-
-        // Set the selected day if it matches the previously selected day
-        if (day == selectedDay) {
-          option.selected = true;
-        }
+    // Check of de datum en de tijd gelijk zijn aan het vorige ingevoegde event
+    if ($eventDate !== $currentDate || $eventTime !== $currentTime) {
+      // Maar als het een nieuwe datum of tijd is, eindig de huidige div en maak een nieuwe
+      if ($currentDate !== null && $currentTime !== null) {
+        echo '</div><hr>';
       }
-
-      var eventMonthSelect = document.getElementById("event_month");
-      eventMonthSelect.value = month; // Set the selected month
+      echo '<div>';
+      echo '<p>Datum: ' . $eventDate . '</p>';
+      echo '<p>Tijd: ' . $eventTime . '</p>';
+      $currentDate = $eventDate;
+      $currentTime = $eventTime;
     }
-  </script>
+
+    echo '<p>Band: ' . $event['bandNaam'] . '</p>';
+    if ($event['hoofdAct'] == 1) {
+      echo '<p>Hoofd Act</p>'; // Display deze regel alleen als het de hoofdact is
+    }
+    echo '<p>Entree prijs: ' . $event['entreePrijs'] . '</p>';
+    echo '<p>Duur van het event: ' . $event['duurInMinuten'] . ' minuten</p>';
+    echo '<br>';
+  endforeach;
+  ?>
+</div>
 </body>
 </html>

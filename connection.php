@@ -1,9 +1,4 @@
 <?php
-// Check for login
-if (!isset($_SESSION['username']) || empty($_SESSION['username'])) {
-    header("location: login.php");
-    exit;
-  }
   
 $dsn = "mysql:host=localhost;dbname=casuscafe";
 $username = "root";
