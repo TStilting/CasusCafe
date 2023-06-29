@@ -34,8 +34,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $stmt = $pdo->prepare("INSERT INTO band (bandNaam, genre, prijs, herkomst, omschrijving) VALUES (?, ?, ?, ?, ?)");
   $stmt->execute([$band, $genre, $prijs, $herkomst, $omschrijving]);
 
-  echo 'Band Toegevoegd';
-
+    //herlaad de pagina na de submit
+    header("Location: admin2.php");
+    echo 'Band Toegevoegd';
+    die();
 }
 
 ?>
@@ -46,29 +48,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <header>
     <a href="admin.php">Event Toevoegen</a>
+    <a href="admin3.php">Bandlid Toevoegen</a>
     <a href="index.php">Terug naar de Startpagina</a>
 </header>
 <body>
-<h2>Add Event</h2>
+<h2>Add Band</h2>
   <form method="POST" action="">
 
-    <label for="band_name">Band Naam:</label>
+    <label for="band_name">Band Naam*:</label>
     <input type="text" id="band_name" name="band_name" required>
     <br>
 
-    <label for="genre">Genre:</label>
+    <label for="genre">Genre*:</label>
     <input type="text" id="genre" name="genre" required>
     <br>
 
-    <label for="prijs">Prijs (in euro):</label>
+    <label for="prijs">Prijs (in euro)*:</label>
     <input type="number" id="prijs" name="prijs" required>
     <br>
 
-    <label for="herkomst">Plaats van Herkomst:</label>
+    <label for="herkomst">Plaats van Herkomst*:</label>
     <input type="text" id="herkomst" name="herkomst" required>
     <br>
 
-    <label for="omschrijving">Omschrijving:</label>
+    <label for="omschrijving">Omschrijving*:</label>
     <input type="text" id="omschrijving" name="omschrijving" required>
     <br>
 
@@ -76,9 +79,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   </form>
   <div>
     <h2>Bands</h2>
+    <?php if (empty($bandDisplays)) : ?>
+      <p>Er zijn op dit moment geen Bands ingevoerd</p>
+    <?php else : ?>
     <?php foreach ($bandDisplays as $bandDisplay) : ?>
       <div>
-        <p>Band Name: <?php echo $bandDisplay['bandNaam']; ?></p>
+        <p>Band: <?php echo $bandDisplay['bandNaam']; ?></p>
         <p>Genre: <?php echo $bandDisplay['genre']; ?></p>
         <p>Prijs: <?php echo $bandDisplay['prijs']; ?></p>
         <p>Herkomst: <?php echo $bandDisplay['herkomst']; ?></p>
@@ -86,6 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       </div>
       <hr>
     <?php endforeach; ?>
+    <?php endif; ?>
   </div>
 </body>
 </html>

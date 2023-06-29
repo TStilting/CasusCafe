@@ -1,0 +1,162 @@
+a {
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer !important;
+}
+
+body, p {
+    margin: 0;
+    padding: 0;
+  }
+  
+  body {
+    font-family: Arial, sans-serif;
+    background-color: #f5f5f5;
+    color: #333;
+    line-height: 1.5;
+  }
+
+  h1 {
+    margin-top: 21px;
+  }
+  
+  .container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+  
+  header {
+    background-color: #333;
+    padding: 10px;
+    margin-bottom: 20px;
+  }
+  
+  header a {
+    color: #fff;
+    text-decoration: none;
+  }
+
+  header a :hover{
+    color: #bbb;
+    text-decoration: none;
+  }
+
+  .center {
+    text-align: center;
+  }
+  
+  div.event {
+    background-color: #fff;
+    border: 1px solid #ccc;
+    margin-bottom: 20px !important;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    margin-left: 10%;
+    margin-right: 10%;
+  }
+  
+  div.event a {
+    color: #333;
+    text-decoration: none;
+  }
+  
+  div.event p {
+    margin-bottom: 10px;
+  }
+  
+  div.event p:last-child {
+    margin-bottom: 0;
+  }
+  
+  div.payout-div {
+    margin: 65px 0px 0px 20px;
+  }
+  
+  a.payout-button {
+    display: inline-block;
+    padding: 10px 20px;
+    background-color: #26c007;
+    color: #fff !important;
+    text-decoration: none;
+  }
+
+  a.payout-button:hover {
+    background-color:#2cdb09;
+  }
+
+  .details {
+    flex: 1;
+    padding: 20px;
+    border-radius: 4px;
+    flex-grow: 1;
+  }
+
+  .details h1 {
+    font-size: 24px;
+    margin-bottom: 10px;
+  }
+
+  .display-details {
+    flex: 1;
+    padding: 20px;
+    border-radius: 4px;
+  }
+  
+  .omschrijving {
+    font-size: 16px;
+    margin-bottom: 10px;
+  }
+  
+  .sub-detail {
+    font-size: 14px;
+    margin-bottom: 5px;
+  }
+
+  .success-message {
+    color: #4CAF50;
+    font-weight: bold;
+    text-align: center;
+  }
+
+  .payout-form {
+    display: flex;
+    flex-direction: column;
+    max-width: 400px;
+    margin: 0 auto;
+  }
+
+  .payout-form label {
+    margin-bottom: 10px;
+    font-weight: bold;
+  }
+
+  .payout-form input[type="text"],
+  .payout-form input[type="email"],
+  .payout-form input[type="number"],
+  .payout-form input[type="submit"] {
+    padding: 10px;
+    margin-bottom: 20px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+
+  .payout-form input[type="submit"] {
+    background-color: #26c007;
+    color: #fff;
+    cursor: pointer;
+  }
+
+  .payout-form input[type="submit"]:hover {
+    background-color: #2cdb09;
+  }
+  
+  /* Responsive styles */
+  @media (max-width: 600px) {
+    .container {
+      padding: 10px;
+    }
+  }
+  
+

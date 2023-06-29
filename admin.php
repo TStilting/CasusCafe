@@ -1,8 +1,7 @@
 <?php
-
 session_start();
 
-// Check voor login
+// Check for login
 if (!isset($_SESSION['username']) || empty($_SESSION['username'])) {
   header("location: login.php");
   exit;
@@ -10,61 +9,56 @@ if (!isset($_SESSION['username']) || empty($_SESSION['username'])) {
 
 include("connection.php");
 
-// stuur de user naar index als het geen admin is
+// Redirect the user to index if they are not an admin
 if ($_SESSION['rol'] != 'admin') {
   header("location: index.php");
   exit;
 }
 
-// Haal alle bandnamen op
+// Retrieve all band names
 $bandNames = array();
-foreach ($pdo->query("SELECT * FROM Band") as $row) {
+$query = $pdo->query("SELECT bandNaam FROM Band");
+while ($row = $query->fetch()) {
   $bandNames[] = $row['bandNaam'];
 }
 
-// Doet alle acties na een submit
+// Dit regelt alles na een submit
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-  $eventDate = $_POST['event_date'];
-  $bandName = $_POST['band_name'];
-  $hoofdAct = isset($_POST['hoofd_act']) ? 1 : 0;
-  $eventTime = $_POST['event_time'];
-  $eventDuration = $_POST['event_duration'];
+  $eventName = $_POST['event_name'];
+  $eventDescription = $_POST['event_description'];
+  $bandNames = isset($_POST['band_names']) ? $_POST['band_names'] : array();
+  $eventStart = $_POST['event_start'];
+  $eventEnd = $_POST['event_end'];
   $entree = $_POST['entree'];
 
-  // Haal het juiste bandId op
-  $stmt = $pdo->prepare("SELECT bandId FROM Band WHERE bandNaam = ?");
-  $stmt->execute([$bandName]);
-  $band = $stmt->fetch(PDO::FETCH_ASSOC);
-  $bandId = $band['bandId'];
-  
+  // Check if at least one band is selected
+  if (count($bandNames) < 1) {
+    $error = 'Er moet minstens 1 Band geselecteerd worden';
+  } else {
+    // Insert Event
+    $stmt = $pdo->prepare("INSERT INTO `Event` (beginstijd, eindtijd, entreePrijs, naam, omschrijving) VALUES (?, ?, ?, ?, ?)");
+    $stmt->execute([$eventStart, $eventEnd, $entree, $eventName, $eventDescription]);
+    $eventId = $pdo->lastInsertId(); // Neem het nieuwste eventId uit de database
 
-  // Insert Query
-  $stmt = $pdo->prepare("INSERT INTO `Event` (datum, entreePrijs, beginstijd) VALUES (?, ?, ?)");
-  $stmt->execute([$eventDate, $entree ,$eventTime]);
+    // Insert voor de Bands
+    foreach ($bandNames as $bandName) {
+      // pak het BandId
+      $stmt = $pdo->prepare("SELECT bandId FROM Band WHERE bandNaam = ?");
+      $stmt->execute([$bandName]);
+      $band = $stmt->fetch(PDO::FETCH_ASSOC);
+      $bandId = $band['bandId'];
 
-  $lastInsertedId = $pdo->lastInsertId();
+      // en voeg bijde id's in Act
+      $stmt = $pdo->prepare("INSERT INTO Act (Event_eventId, Bands_bandId) VALUES (?, ?)");
+      $stmt->execute([$eventId, $bandId]);
+    }
 
-  $stmt = $pdo->prepare("INSERT INTO Act (hoofdAct, Event_eventId, Bands_bandId) VALUES (?, ?, ?)");
-  $stmt->execute([$hoofdAct, $lastInsertedId, $bandId]);
-
-  $lastInsertedActId = $pdo->lastInsertId();
-
-  $stmt = $pdo->prepare("INSERT INTO `Set` (duurInMinuten, Act_actId) VALUES (?, ?)");
-  $stmt->execute([$eventDuration, $lastInsertedActId]);
-
-  echo 'Event Toegevoegd';
-
+    //herlaad de pagina na de submit
+    header("Location: admin.php");
+    echo 'Event Toegevoegd';
+    die();
+  }
 }
-
-$stmt = $pdo->prepare("SELECT datum, Band.bandNaam, Act.hoofdAct, entreePrijs, beginstijd, `Set`.duurInMinuten
-FROM `Event`
-JOIN Act ON `Event`.eventId = Act.Event_eventId
-JOIN Band ON Act.Bands_bandId = Band.bandId
-JOIN `Set` ON Act.ActId = `Set`.Act_actId
-ORDER BY datum, beginstijd");
-$stmt->execute();
-$events = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
 ?>
 <!DOCTYPE html>
 <html>
@@ -73,73 +67,70 @@ $events = $stmt->fetchAll(PDO::FETCH_ASSOC);
 </head>
 <header>
     <a href="admin2.php">Band Toevoegen</a>
+    <a href="admin3.php">Bandlid Toevoegen</a>
     <a href="index.php">Terug naar de Startpagina</a>
 </header>
 
 <body>
   <h2>Add Event</h2>
-  <form method="POST" action="">
+  <form method="POST" action="admin.php">
 
-    <label for="event_month">Datum:</label>
-    <input type="date" id="event_date" name="event_date" required>
+    <label for="event_name">Naam*:</label>
+    <input type="text" id="event_name" name="event_name" required>
     <br>
 
-    <label for="band_name">Band Naam:</label>
-    <select id="band_name" name="band_name">
-      <?php foreach ($bandNames as $bandName) : ?>
-        <option value="<?php echo $bandName; ?>"><?php echo $bandName; ?></option>
-      <?php endforeach; ?>
-    </select>
+    <label for="event_description">Omschrijving*:</label>
+    <textarea id="event_description" name="event_description" required></textarea>
     <br>
 
-    <label for="hoofd_act">Is het de hoofdact?</label>
-    <input type="checkbox" id="hoofd_act" name="hoofd_act">
+    <label for="band_name">Bands*:</label>
+    <br>
+    <?php foreach ($bandNames as $bandName) : ?>
+      <input type="checkbox" id="band_name" name="band_names[]" value="<?php echo $bandName; ?>">
+      <label for="<?php echo $bandName; ?>"><?php echo $bandName; ?></label>
+      <br>
+    <?php endforeach; ?>
     <br>
 
-    <label for="event_time">Start Tijd van het Event:</label>
-    <input type="time" id="event_time" name="event_time" required>
+    <label for="event_start">Het event begint om*: </label>
+    <input type="datetime-local" id="event_start" name="event_start" required>
     <br>
 
-    <label for="event_duration">Duur (in minuten):</label>
-    <input type="number" id="event_duration" name="event_duration" required>
+    <label for="event_end">En duurt tot*: </label>
+    <input type="datetime-local" id="event_end" name="event_end" required>
     <br>
 
-    <label for="entree">entreeprijs (in euro):</label>
+    <label for="entree">Entreeprijs (in euro) (per kaartje)*:</label>
     <input type="number" id="entree" name="entree" required>
     <br>
 
     <input type="submit" value="Add Event">
   </form>
+
   <div>
   <h2>Events</h2>
   <?php
-  $currentDate = null;
-  $currentTime = null;
-  foreach ($events as $event) :
-    $eventDate = $event['datum'];
-    $eventTime = $event['beginstijd'];
+  // Retrieve all events with associated bands
+  $stmt = $pdo->query("SELECT Event.eventId, DATE_FORMAT(Event.beginstijd, '%d-%m-%Y %H:%i') AS beginstijd, DATE_FORMAT(Event.eindtijd, '%d-%m-%Y %H:%i') AS eindtijd, Event.naam, Event.omschrijving, GROUP_CONCAT(Band.bandNaam SEPARATOR ', ') AS bandNamen, Event.entreePrijs
+  FROM Event
+  JOIN Act ON Event.eventId = Act.Event_eventId
+  JOIN Band ON Act.Bands_bandId = Band.bandId GROUP BY Event.eventId
+  ORDER BY beginstijd;");
+  $events = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Check of de datum en de tijd gelijk zijn aan het vorige ingevoegde event
-    if ($eventDate !== $currentDate || $eventTime !== $currentTime) {
-      // Maar als het een nieuwe datum of tijd is, eindig de huidige div en maak een nieuwe
-      if ($currentDate !== null && $currentTime !== null) {
-        echo '</div><hr>';
-      }
+  if (count($events) > 0) {
+    foreach ($events as $event) {
       echo '<div>';
-      echo '<p>Datum: ' . $eventDate . '</p>';
-      echo '<p>Tijd: ' . $eventTime . '</p>';
-      $currentDate = $eventDate;
-      $currentTime = $eventTime;
+      echo '<p>Naam: ' . $event['naam'] . '</p>';
+      echo '<p>Omschrijving: ' . $event['omschrijving'] . '</p>';
+      echo '<p>Van: ' . $event['beginstijd'] . ' Tot: ' . $event['eindtijd'] . '</p>';
+      echo '<p>Bands: ' . $event['bandNamen'] . '</p>';
+      echo '<p>Entree prijs: ' . $event['entreePrijs'] . '</p>';
+      echo '</div>';
     }
-
-    echo '<p>Band: ' . $event['bandNaam'] . '</p>';
-    if ($event['hoofdAct'] == 1) {
-      echo '<p>Hoofd Act</p>'; // Display deze regel alleen als het de hoofdact is
-    }
-    echo '<p>Entree prijs: ' . $event['entreePrijs'] . '</p>';
-    echo '<p>Duur van het event: ' . $event['duurInMinuten'] . ' minuten</p>';
-    echo '<br>';
-  endforeach;
+  } else {
+    echo '<p>No events found.</p>';
+  }
   ?>
 </div>
 </body>
